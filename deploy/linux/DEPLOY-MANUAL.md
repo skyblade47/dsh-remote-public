@@ -1310,8 +1310,63 @@ sudo bash /opt/dsh-remote/deploy/linux/restart-kernel.sh --force   # 明知不�
   **别把 journal 关掉** —— `check-ready.sh` 要从它里面取带 token 的访问 URL，故障排查也全靠它。
   **口径提醒**：`journalctl --disk-usage` 与 `du` 会差近一倍（实测 349.6M vs 719M，原因未查清，
   疑与未封印的 `.journal~` 文件有关）；判断"占了多少盘"以 `du` 为准。
-- **备份**：至少要备 `$DSH_HOME`（会话、`.credentials.yaml`、`settings.yaml`、`.agent-presets`）与
-  `/srv/dsh-workspace`。云主机可用快照/镜像做整机备份。
+- **备份**：见下面的 **§11.1**（一条命令打完 + 拉回本机 + 出事回传的完整步骤）。一句话口径：
+  代码随时能重装，**会话与正文不能** ⇒ 动服务端之前先把"使用数据"留一份在本机。
+
+### 11.1 ★ 更新前后的「使用数据」备份 / 回传（2026-09-30）
+
+> 一句话：**动服务端代码之前，先把"不可重建的使用数据"打一份、拉回本机、校验通过。**
+> 两个脚本：服务器侧 `deploy/linux/backup-data.sh` · 本机侧 `tools/data-backup.ps1`（只用系统自带 ssh/scp，**不依赖 rsync**）。
+
+**① 先分清：什么要备、什么不用备**（2026-09-30 在实例上实测的体积）
+
+| 类别 | 内容 | 体积 | 要不要备 |
+|---|---|---|---|
+| 🔴 使用数据 | `$DSH_HOME/sessions/`（会话本体） | 222 MB | **必** |
+| 🔴 使用数据 | `$DSH_HOME` 的 `.credentials.yaml` · `settings.yaml` · `.agent-presets/` · `hotplug-manifest.yml` · `session-owners.json` · `task-board/` · `storages/` | KB ~ 4 MB | **必** |
+| 🔴 使用数据 | `/srv/dsh-workspace` 全树（`写作训练/` `客户端区/` `全局数据/` `记忆归档/` …） | 20 MB | **必** |
+| ⬜ 可重建 | `$DSH_HOME/profiles/`（装依赖即得） | 369 MB | 不必（要整机回放就加 `--full`） |
+| ⬜ 可重建 | `DSH工具/社区插件`（可从上游重下） | 110 MB | 不必 |
+| ⬜ 重复数据 | `DSH工具/剪枝快照_*`（同一份的多个时间副本） | 17 MB | 不必 |
+| ⬜ 历史备份桶 | `$DSH_HOME/_d-full-sessions-*` · `_migrate-backup-*` · `_exp-heap-*` · `_janitor-recycle` 等 | ≈749 MB | 不必（**它们本身就是备份**） |
+| ⬜ 日志 | `$DSH_HOME/logs/` | 13 MB | 不必 |
+
+⇒ 实测「使用数据」≈ **250 MB**（打包后 60–100 MB）。**上表的取舍已写死在脚本里**，不用你逐目录挑。
+
+**② 六步（照着做）**
+
+| 步 | 在哪 | 做什么 | 判据 |
+|---|---|---|---|
+| 1 备份 | **服务器** | `bash /opt/dsh-remote/deploy/linux/backup-data.sh`<br>要严格一致：加 `--stop`（先停内核+网关，**打完自动拉起**） | 落点 `/root/dsh-backups/data-<时间戳>/`，含两个 `.tar.gz` + `MANIFEST.txt` + `SHA256SUMS`；脚本会把包内条目数与 sha256 打出来 |
+| 2 拉回本机 | **本机** | `powershell -File tools/data-backup.ps1 -Action Pull -Server root@<host> -Key <私钥路径>` | 落点 `E:\dsh-backups\data-<时间戳>\`，脚本**逐包对 SHA256SUMS 校验**并打印 ✅ |
+| 3 改动服务端 | 服务器 | 按 §7.2 上传代码 / `setup.sh` / 热插拔（与备份互不影响） | 见 §7.2 各自判据 |
+| 4 更新后核对 | 服务器 | 见下方「核对清单」 | 全绿才算更新成功 |
+| 5 出事回传 | 本机 → 服务器 | `powershell -File tools/data-backup.ps1 -Action Push -Server root@<host> -Dir data-<时间戳>` | 上传后远端自动 `sha256sum -c SHA256SUMS` |
+| 6 还原 | 服务器 | `tar -xzf …/dsh-home-data.tar.gz -C "$DSH_HOME"`<br>`tar -xzf …/dsh-workspace-data.tar.gz -C /srv/dsh-workspace` | ⚠️ **会覆盖同名文件** ⇒ 先 `tar -tzf` 看一眼内容再解 |
+
+**③ 核对清单（第 4 步用）**
+
+```bash
+# 会话还在（与备份时的条目数对得上）
+ls -1 "$DSH_HOME/sessions/--srv-dsh-workspace--" | wc -l
+# 正文与全局数据还在
+du -sh /srv/dsh-workspace/{写作训练,客户端区,全局数据,记忆归档}
+# 配置/凭据没被覆盖
+ls -la "$DSH_HOME"/{settings.yaml,.credentials.yaml} "$DSH_HOME"/hotplug-manifest.yml
+# 服务健康
+sudo bash /opt/dsh-remote/deploy/linux/check-ready.sh
+```
+
+**④ 保留策略**：默认**不删**任何旧备份；要轮转用 `--keep N --prune`（显式才删，保留最近 N 份 `data-*`）。
+本机侧同理：`E:\dsh-backups` 下的同名目录由你自己清（脚本不碰）。
+
+**⑤ 🔴 三条纪律**
+
+1. **备份包绝不放进工作区**：只留 `/root/dsh-backups` 与本机 `E:\dsh-backups`。放进 `/srv/dsh-workspace` 会被 agent 索引、被当正文、还会被下一次备份再备一遍。
+2. **`dsh-home-data.tar.gz` 里有 `.credentials.yaml`（模型 API key）** ⇒ 别往公开仓/聊天/工单里贴；本机那份也别放在 OneDrive 同步区（`E:\` 即可，`D:\OneDrive` 不要）。
+3. **备份脚本对源只读**（不 `mv`、不 `--remove-files`、不停服务除非显式 `--stop`）；**写动作只发生在还原**（第 6 步）⇒ 还原前务必确认目标目录。
+
+**⑥ 和"代码备份"的关系**：`/root/dsh-backups/` 下另有各次部署窗口留的**代码/配置**备份（`plugins-*`、`state.json`、`release.json`…）。二者用途不同、互不覆盖：代码备份用于**回滚版本**，`data-*` 用于**回滚数据**。
 
 ## 12. 故障排查
 
