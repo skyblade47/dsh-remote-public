@@ -1,0 +1,4 @@
+packages: []
+overrides:
+  '@deepseek-ai/dsh-settings': 0.1.6-alpha.2
+onlyBuiltDependencies: []

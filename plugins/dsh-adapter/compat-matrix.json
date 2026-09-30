@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 2,
+  "updatedAt": "2026-09-27",
+  "source": "重算依据四份，均已核实：① npm registry packument（**2026-09-27 复核**，dist-tags 已变）；② 四个第三方插件的官方 GitHub 仓库文档（含 `compatibility.json` / `dsh.plugin.json`）；③ 干净 Ubuntu 24.04 实例上的实测；④ 🆕 **2026-09-27 首次真升级（rc.1 → rc.3）真机实测**（证据：`docs/superpowers/evidence/2026-09-27-first-real-upgrade/SUMMARY.md`；第三方 compat 评估：`docs/superpowers/specs/2026-09-27-third-party-compat-and-host-upgrade-assessment.md`）。schemaVersion 2 相对 1 **只新增字段**（transitivePin / localPlugins / evidence），既有字段语义未变，v1 读者忽略新字段即可。",
+  "note": "hosts[].plugins = 在该宿主版本下可用的『**最高可用**版本』（不是『最新版』——见各档位 notes 里的冲突说明）。adapter 启动/查询时用本表判断已装插件是否需要升级、以及宿主升级时该配套升到哪些插件版本。⚠️ **例外：rc.3 档**（现役宿主）记的是**已实测在跑**的那一组 —— 2026-09-27 晚起它已等于『声明支持 rc.3』的版本（见该档 notes）。另有 localPlugins 一节覆盖自研插件（它们的 engines.dsh 由 adapter 直接读 profile，不走本表）。",
+
+  "transitivePin": {
+    "why": "**必须把内核的传递依赖也钉住**，否则『同一条安装命令』在不同日子会装出不同的依赖树。",
+    "failureMode": "`@deepseek-ai/dsh@0.1.5-rc.1` 的传递依赖用 `^` 范围声明。上游持续发版 ⇒ 全新安装解析到更新的传递版本 ⇒ **npm 生成的依赖树形状改变**（顶层扁平 ↔ 嵌套）⇒ 内核插件加载器要求扁平形状，一变嵌套就启动即崩：`plugin(s) failed to load: @deepseek-ai/dsh-sandbox-local; Cordis startup failed because these plugin(s) could not be resolved`。⚠️ 极具欺骗性：内核崩溃前那几秒确实在监听，探针会报 PASS/FAIL 0。",
+    "npmBefore": "2026-09-10T12:00:00Z",
+    "npmBeforeRationale": "实测发布时间：rc.1 → 2026-09-10T03:02~03:12Z；rc.2 → 2026-09-10T14:46~14:57Z；rc.3 → 2026-09-22T05:44~05:55Z。取 12:00Z 落在 rc.1 与 rc.2 之间 ⇒ 整棵树统一停在 rc.1。",
+    "verifiedOn": "2026-09-23 干净实例：dsh=0.1.5-rc.1 dsh-base=0.1.5-rc.1 dsh-session=0.1.5-rc.1，内核顶层呈扁平，is-active=active，NRestarts=0，3080 正常监听",
+    "implementation": "deploy/linux/setup.sh 的 NPM_BEFORE_DEFAULT + --npm-before；并在装配后做『依赖树形状自检』（dsh-base/node_modules/@deepseek-ai 非空即判错退出）",
+    "upstreamDrift": {
+      "0.1.5-rc.1": "2026-09-10T03:02~03:12Z",
+      "0.1.5-rc.2": "2026-09-10T14:46~14:57Z",
+      "0.1.5-rc.3": "2026-09-22T05:44~05:55Z —— 全新安装会解析到它，而它正是让树变嵌套的那一版"
+    }
+  },
+
+  "localPlugins": {
+    "note": "自研插件（@local/*，共 13 个 = adapter + 12 个自研）此前**完全没有任何版本声明**，导致『所有插件支持哪个宿主版本』无法机器判定。2026-09-23 起在各自 package.json 里补上 `engines.dsh`（生态既有字段：dsh-better-sidebar 的 dsh.plugin.json 用它，dshmarket 的市场卡片也读它）。adapter 的 readLocalPluginEngines() 直接读 profile 里的实际值，不依赖本表。注：2026-09-25 下线 `lanr` 后由 13 个（adapter + 12 自研）减为 12 个（adapter + 11 自研）。⚠️ 口径提醒（2026-09-25 同日稍后）：**同日下线 `email-bridge`（移出白名单、不再加载）时【未】再减本计数** —— 与 `lanr` 不同，它的**源码保留**在 `plugins/email-bridge/`、仍链接进 profile ⇒ **按本表口径仍是本地插件**（本表记的是『盘上有哪些 `@local` 包』，**不是『白名单有几条』**；白名单见 `mountPolicy.evidence2026_09_23`）。⚠️ 2026-09-26 新增 `@local/version-radar`（白名单 14 → 15）⇒ 本计数 12 → 13、`pkgs` +1（= adapter + 12 自研）。⚠️ 2026-09-27 下线 `wrpro`（**只下线加载、源码保留**，同 email-bridge）⇒ **按本表口径（『盘上有哪些 `@local` 包』，不是白名单条数）count 仍为 13、`pkgs` 不变**。🔄 **2026-09-27 晚（真升级后）复核**：宿主已由 rc.1 **真升级到 rc.3**（见 `hosts` 的 rc.3 档，冒烟 `loaded=15 failed=0`）⇒ **13 个自研插件的 `engines.dsh` 同步由 `0.1.5-rc.1` 提到 `0.1.5-rc.3`**，本字段同步更新。📌 这正好走完了本策略设计的那一轮：**宿主升 ⇒ 声明不匹配被报出 ⇒ 冒烟 ⇒ 放宽声明**（不是静默放宽）。",
+    "declared": "0.1.5-rc.3",
+    "count": 13,
+    "pkgs": [
+      "@local/dsh-adapter", "@local/email-bridge", "@local/knowledge-base",
+      "@local/memory-system", "@local/miyoushe", "@local/prompt-router", "@local/session-janitor",
+      "@local/skill-center", "@local/taskkit", "@local/version-radar", "@local/writing-coach", "@local/writing-studio", "@local/wrpro"
+    ],
+    "verifiedOn": "0.1.5-rc.3",
+    "declarationPolicy": "声明写**精确值**（不是 `>=`）—— 与『本体不擅自升级、要等命令』一致：宿主一升，这 13 个声明就不匹配，会被 adapter 的 localPluginCompat 报出来，形成一次强制复核。要放宽必须先冒烟。",
+
+    "adapterOverride": "声明不匹配 ≠ 不可用。adapter 的 evaluate() 会结合能力探针给四种结论：declared-ok / capabilities-ok（探针无 high 缺口 ⇒ 可能可用，**未经实测**）/ capability-gaps（探针有 high 缺口 ⇒ 判定不可用）/ undeclared（没写声明或语法不认识 ⇒ 无法判定）。这就是 adapter 的跨版本兜底。"
+  },
+
+  "hosts": [
+    {
+      "host": "0.1.2-rc.1",
+      "track": "legacy",
+      "notes": "旧线。自研插件已声明只支持 0.1.5-rc.1（那时尚未声明）；第三方里 agent-teams 的四段枚举仍含本条，better-sidebar 需退到 0.18.1。仅作历史参考。",
+      "plugins": {
+        "@nanmicoder/dsh-agent-teams": "0.1.20",
+        "@huanlin/dsh-plugin-better-locale": "0.3.1",
+        "dsh-better-sidebar": "0.18.1",
+        "dshmarket": "1.47.0"
+      }
+    },
+    {
+      "host": "0.1.5-rc.1",
+      "track": "legacy-verified",
+      "notes": "🔄 **2026-09-27 起被 `0.1.5-rc.3` 取代**（见下一档）：首次真升级完成后 rc.3 才是现役推荐宿主；本档保留作『回滚到 rc.1』时的配套参考，**不再是推荐档**。⚠️ 另更正本档旧表述里的一句：『它是四个第三方插件**唯一的交集点**』**已过期** —— 2026-09-27 复核显示 `0.1.5-rc.2`/`rc.3` 同样落在这条交集线上（详见 `docs/superpowers/specs/2026-09-27-third-party-compat-and-host-upgrade-assessment.md`）。**本项目最初选定并已实测通过的宿主**。它是当时四个第三方插件唯一的交集点：agent-teams（含最新版 0.1.20）的 peer 精确枚举 `0.1.5-rc.1`，README 把 0.1.5-rc.1 列为 recommended host。⚠️ 注意**两处「最新版反而不能用」**：better-locale 最新版 0.4.3 要求 `^0.1.5-rc.2`（不含 rc.1）⇒ 必须用 **0.4.1**；dshmarket 从 1.47.0 到 1.58.0 **所有版本**的 peer 都不含 0.1.5 线 ⇒ 维持 1.47.0 且**属声明不匹配的实测可用**（详见 evidence.dshmarket）。",
+      "enginesDeclaredBy": {
+        "dsh-better-sidebar": ">=0.1.5-rc.1",
+        "@nanmicoder/dsh-agent-teams": "0.1.5-rc.1 || 0.1.2-rc.1 || 0.1.2-alpha.5 || 0.1.2-alpha.2"
+      },
+      "plugins": {
+        "@nanmicoder/dsh-agent-teams": "0.1.20",
+        "@huanlin/dsh-plugin-better-locale": "0.4.1",
+        "dsh-better-sidebar": "0.19.1",
+        "dshmarket": "1.47.0"
+      }
+    },
+    {
+      "host": "0.1.5-rc.2",
+      "track": "caution",
+      "notes": "⚠️ agent-teams 的枚举**不含** rc.2 ⇒ 升到 rc.2 会让它落回 0.1.15（不兼容线：0.1.15 用已被移除的 registerContinuableSetup，加载即失败）。且 rc.2 的传递依赖已不再是 rc.1 ⇒ 若不配合 transitivePin，依赖树会变嵌套。除非有强需求，不要升。",
+      "plugins": {
+        "@nanmicoder/dsh-agent-teams": "0.1.15",
+        "@huanlin/dsh-plugin-better-locale": "0.4.3",
+        "dsh-better-sidebar": "0.19.1",
+        "dshmarket": "1.47.0"
+      }
+    },
+    {
+      "host": "0.1.5-rc.3",
+      "track": "recommended-verified",
+      "notes": "🟢 **现役宿主**（2026-09-27 首次真升级 `rc.1 → rc.3`，整包装配 + `--npm-before 2026-09-22T16:00:00Z`）。已实测：`verify` 全绿、白名单 **15/15**、冒烟 **`loaded=15 failed=0`**（4 个第三方全部挂上）、本机预验证依赖树**扁平**。🔴 **本档原记 `track=avoid`（理由『rc.3 依赖树嵌套 ⇒ 内核启动即 crash-loop』）—— 该结论已作废**：那是**混搭安装**的失败模式（`npm i -g @deepseek-ai/dsh@0.1.5-rc.1` 因 `^` 范围解析到 rc.3 的**传递包**），不是「整包装 rc.3」的结论；且上游 rc.3 的唯一实质 commit 正是 `fix(release): pin vendor dependencies for dsh 0.1.5`。🆕 **2026-09-27 晚：第三方升到「声明支持 rc.3」的那组并已上服务器**（`agent-teams 0.1.20 → 0.1.21`、`better-locale 0.4.1 → 0.4.3`）—— WSL2 装配 T-1…T-9 全过 + 冒烟 `loaded=15 failed=0`，服务器侧 `kernel-release.sh install 0.1.5-rc.3` 重钉 + 内核重启后实测 **`loaded=14 failed=0`（服务器白名单 14 条）**、`check-ready` **PASS 20 / WARN 0 / FAIL 0**、`/taskkit/api/writing/drafts` `count=64`、`versionWarnings` 归零。⇒ 本档 `plugins` 现在记的**就是已实测在跑的那一组**（不再是「声明不支持、实测可用」）。⚠️ **升版有一个必须记住的运维事实**：插件版本号嵌在 `.pnpm` 路径里，而 adapter 在 boot 时把**解析后的绝对路径**登记进 buster ⇒ **`hotplug reload` 换不了版本**（报 `INVALID_PATH`），换版**必须重启内核**。",
+      "enginesDeclaredBy": {
+        "dsh-better-sidebar": ">=0.1.5-rc.1",
+        "@huanlin/dsh-plugin-better-locale": "^0.1.5-rc.2",
+        "@nanmicoder/dsh-agent-teams": "0.1.7-rc.2 || 0.1.5-rc.3 || 0.1.5-rc.2 || 0.1.5-rc.1 || 0.1.2-rc.1 || 0.1.2-alpha.5 || 0.1.2-alpha.2"
+      },
+      "plugins": {
+        "@nanmicoder/dsh-agent-teams": "0.1.21",
+        "@huanlin/dsh-plugin-better-locale": "0.4.3",
+        "dsh-better-sidebar": "0.19.1",
+        "dshmarket": "1.47.0"
+      }
+    },
+    {
+      "host": "0.1.6-alpha.1",
+      "track": "alpha",
+      "notes": "alpha 线：agent-teams 退回 0.1.15。仅作前瞻参考，不建议生产使用。",
+      "plugins": {
+        "@nanmicoder/dsh-agent-teams": "0.1.15",
+        "@huanlin/dsh-plugin-better-locale": "0.4.3",
+        "dsh-better-sidebar": "0.19.1",
+        "dshmarket": "1.47.0"
+      }
+    },
+    {
+      "host": "0.1.7-rc.2",
+      "track": "preview-unverified",
+      "notes": "🆕 **仅登记，未实测**（2026-09-27 复核新增；上游 `next` dist-tag 指向它）。第三方侧**分裂**：`agent-teams 0.1.21` 的 `recommendedHost` 就是它、`better-sidebar 0.21.1` 要求 `^0.1.7-rc.1`；但 **`better-locale` 自 2026-09-11 未再发版**（peer 封顶 `^0.1.5-rc.2` ⇒ **不含 0.1.7**）、**`dshmarket` 1.0.0~1.66.2 从未声明任何 0.1.5+ 线** ⇒ **两家无声明兜底，只能靠冒烟赌**。⚠️ 破坏面（rc.3 之后累计）：会话日志升 **V4**、**弃用 `snapshotEvents`/`eventAt`/`ownEvents`**、`agent/session-start` → `agent/created`、插件依赖改**运行时解析 + 可卸载** ⇒ **本仓 adapter 的会话读取（resume gate/tail）与热插拔内核外科（tree-ops）是高危区**。完整评估：`docs/superpowers/specs/2026-09-27-third-party-compat-and-host-upgrade-assessment.md`。",
+      "plugins": {
+        "@nanmicoder/dsh-agent-teams": "0.1.21",
+        "dsh-better-sidebar": "0.21.1",
+        "dshmarket": "1.47.0"
+      }
+    },
+    {
+      "host": "0.1.7-alpha.2",
+      "track": "alpha",
+      "notes": "截至 2026-09-23 registry 上 `alpha` dist-tag 指向它。同样未做插件配套验证 ⇒ 连『能装出可启动的依赖树』都未确认。仅登记，不作推荐。",
+      "plugins": {}
+    }
+  ],
+
+  "capabilityNotes": {
+    "subagents.registerProvider": "0.1.2-rc.1 起的现代子代理契约（配 agents.create/resume 显式 setup 回调）。",
+    "subagents.registerContinuableSetup": "0.1.2-alpha.x 的旧全局注册 hook；rc.1 已重构移除。按旧契约编写的第三方插件在 rc.1 加载即失败（agent-teams 0.1.15 实证：registerContinuableSetup is not a function）。",
+    "agentPresets.resolve/mount": "preset 挂载契约：任何自行 resume 会话的插件都必须通过它把 preset 组合挂到 agent scope，否则该 agent 只剩宿主全局工具层（实证：工具数 94→61，web_search/read/pwsh 等丢失，调用报 UNKNOWN_TOOL）。",
+    "sessionQuery.readSession": "读取会话持久化事件（含 agent-preset/selected），是「当前 preset 判定」的依据。"
+  },
+
+  "mountPolicy": {
+    "policy": "全部插件（第三方 + 自研）一律经 @local/dsh-adapter 的 hotplug 白名单（<DSH_HOME>/hotplug-manifest.yml）挂载；dsh.profile.bundles 只保留种子层（@deepseek-ai/dsh-base / @deepseek-ai/dsh-web-app / @local/dsh-adapter）。",
+    "why": "bundles 的条目挂在复合层里、dispose 链与 bundles 共享 ⇒ 热替档位最低、且加载失败会连累整核。白名单条目在独立子树（实测 tier=free、tierReason=\"loader 顶层独立条目\"）⇒ 档位更高、失败可控、状态可观测。依据：docs/superpowers/specs/2026-09-22-adapter-hot-plug-design.md §1.3 缺陷① / §1.4。",
+    "pathContract": "白名单条目的 path **必须是能从 profile 解析到的包名**（自研用 @local/<name>，第三方用裸包名），或 file: URL。绝对目录会被 loader 直接 import，而 ESM 不支持目录导入 —— 现已在 resolveEntryName 里改为**明确报错**（不再静默放行），并由 server/scripts/check-hotplug-paths.mjs 在装配期自检（setup.sh 调用，不通过即中止装配）。前提：该包已被链接进 <profile>/node_modules（自研由 setup.sh 的 link_local_plugins() 建 symlink，第三方由 pnpm 安装）。",
+    "autoLoad": "已实现（2026-09-23）：tree 就绪后自动加载白名单里 enabled 且不在 tree 的条目；逐条隔离失败、幂等、结果写 hotplug 审计。依据：设计文档 §2.2 / §5.3。",
+    "capabilityBoundary": {
+      "自研插件（仓库内，真实路径在 node_modules 之外）": "可挂载 + 可热替（reload/swap）",
+      "第三方插件（npm 安装，真实路径在 node_modules 内）": "可挂载，**不可热替** —— buster 规则 2 明令 node_modules 内不 bust（否则同一依赖会复制 N 份、破坏单例）。点 reload 会报成功但代码不变，属设计行为。",
+      "依据": "plugins/dsh-adapter/lib/hotplug/buster-core.js 的 isInsideNodeModules / isBustable"
+    },
+    "@nanmicoder/dsh-agent-teams": "推荐经 @local/dsh-adapter 的 hotplug 白名单挂载（manifest 驱动、开机自动加载、失败可控、状态可观测），而非直接进 profile bundles —— 该插件历史上曾导致宿主启动失败。（2026-09-22 由 @local/sandbox 迁至 adapter，sandbox 已拆除）",
+    "evidence2026_09_23": "真机实测（2026-09-23 白名单 15 条；2026-09-24 增至 16 条 —— 新增 @local/session-janitor）：15 条重启后自动加载 loaded=15 failed=0 skipped=0、全程无人工 POST；热替改码即生效（NRestarts 0→0、ExecMainStartTimestamp 不变）；故意写坏单插件后 reload 返 422 HOTPLUG_LINK_INVALID，而内核与他人不受影响、旧实例仍在树上（gen/moduleRev 未变）、审计有明确 code+stage；15 个逐个冒烟：13 确认工作 / 1 数据面降级（miyoushe 缺数据目录）/ 1 仅确认加载（better-locale 纯客户端）。2026-09-24 新增 session-janitor 后白名单**曾达 16 条**、全部 loaded=true，check-ready PASS 20 / WARN 0 / FAIL 0；**2026-09-25 下线 lanr（运行期热操作 `POST {op:\"remove\",id:\"lanr\"}`）后白名单为 15 条**（自研 11 + 第三方 4），运行态 entries=15、全部 loaded=true、inFlight=null、unstable=false，内核未重启（NRestarts=0）。**2026-09-25 同日稍后下线 email-bridge（运行期热操作 `POST {op:\"remove\",id:\"email-bridge\"}`，返回 `{id:\"email-bridge\",status:\"removed\",wasLoaded:true}`）后白名单为 14 条**（自研 10 + 第三方 4），运行态 entries=14、全部 loaded=true、inFlight=null、unstable=false，内核未重启（NRestarts=0）；⚠️ 与 lanr 不同，**email-bridge 源码保留在 `plugins/email-bridge/`（只下线、不删源码）**。**2026-09-27（`wrpro` 下线，白名单 15 → 14）**：运行期热操作 `POST /adapter/api/hotplug {\"op\":\"remove\",\"id\":\"wrpro\"}`，返回 `{\"ok\":true,\"result\":{\"id\":\"wrpro\",\"status\":\"removed\",\"wasLoaded\":true}}`；下线后 **entries=14 / loaded=14 / 含 wrpro=否 / inFlight=null / unstable=false**，审计两条（`hotplug.unload.ok`（`removed=1`，`durationMs=5290`）+ `hotplug.whitelist.remove`（`wasLoaded:true`）），**内核未重启**（`NRestarts=0`、`ActiveEnterTimestamp` 仍为 14:35:47 CST），`check-ready` **PASS 19 / WARN 1 / FAIL 0**、白名单 14 条全挂（自研 10 + 第三方 4）。⚠️ 同 email-bridge：**`wrpro` 源码保留在 `plugins/wrpro/`（只下线、不删源码）** —— 因其 `client/typo-dict.js` **是客户端要复用的错别字词典资产**。",
+    "note": "第三方插件的挂载方式记录在此，供升级/回滚时参考。"
+  },
+
+  "evidence": {
+    "queriedAt": "2026-09-27T11:40:00Z",
+    "queriedAtHistory": ["2026-09-23T06:01:03Z"],
+    "registry": "https://registry.npmjs.org",
+    "hostDistTags": { "latest": "0.1.5-rc.3", "next": "0.1.7-rc.2", "alpha": "0.1.7-alpha.2" },
+    "note": "🔄 **2026-09-27 复核（dist-tags 已变）**：`latest` 由 `0.1.5-rc.2` → **`0.1.5-rc.3`**（rc.2 会让 agent-teams 落回不兼容线，但它**已不是 latest**）；`next` 由 `0.1.5-rc.3` → **`0.1.7-rc.2`**。⚠️ 仍然**不要用 `@latest` 部署** —— 本仓一律**显式钉版本 + 钉 `--npm-before`**（rc.3 ⇒ `2026-09-22T16:00:00Z`；两者必须成对）。📌 **`0.1.5` / `0.1.6` 正式版截至本次复核仍不存在**（上游只发到 `0.1.5-rc.3`、`0.1.7-rc.2`）。",
+    "thirdParty": {
+      "@nanmicoder/dsh-agent-teams": {
+        "github": "https://github.com/NanmiCoder/dsh-agent-teams",
+        "latest": "0.1.21",
+        "doc": "🔄 **2026-09-27 复核（重大变化）**：最新版已是 **0.1.21**（2026-09-24 发布），其 peer 由四段枚举扩为**七段**：`0.1.7-rc.2 || 0.1.5-rc.3 || 0.1.5-rc.2 || 0.1.5-rc.1 || 0.1.2-rc.1 || 0.1.2-alpha.5 || 0.1.2-alpha.2`（20 个 `@deepseek-ai/dsh-*` 字段同值），`compatibility.json` 的 `recommendedHost` 已变为 **`0.1.7-rc.2`**，release 说明写明『Adapt … to Harness `0.1.7-rc.2`. Align the development cohort and add exact `0.1.5-rc.2/rc.3` support.』📌 因此本仓在 **rc.3** 上可从 0.1.20 升到 **0.1.21**（由『声明不支持、实测可用』变为『声明支持』）；⚠️ 枚举里**没有** `0.1.7-rc.1` / `0.1.6-*` / `0.1.7-alpha.*`。旧记录（0.1.20 时代）：README `Recommended pair: DSH 0.1.5-rc.1 + AgentTeams 0.1.20`、`recommendedHost=0.1.5-rc.1`。",
+        "startsFrom": "v0.1.17-rc.1 / v0.1.17（标题即『Harness 0.1.5 support』）",
+        "docMatchesNpm": true
+      },
+      "@huanlin/dsh-plugin-better-locale": {
+        "github": "https://github.com/HuanLinOTO/dsh-plugin-better-locale",
+        "latest": "0.4.3",
+        "doc": "README 元信息表：`Requires: DSH dsh-v0.1.5-rc.1 or newer`。**但** 0.4.2/0.4.3 的 peer 是 `^0.1.5-rc.2`（不含 rc.1），0.4.1 才是 `^0.1.5-rc.1`。🔄 **2026-09-27 复核**：最新**仍是 0.4.3**（最后发布 2026-09-11，近两周无新版本）⇒ 它 `^0.1.5-rc.2` 的封顶意味着**支持到 `0.1.5-rc.3`，但不含 `0.1.7`** ⇒ **它是本仓升级到 0.1.7 线的唯一瓶颈**（且 README 的『or newer』与 peer 冲突，两处文档互相矛盾、仓库无 Releases/tags 可裁决）。",
+        "docMatchesNpm": false,
+        "conflict": "文档说 rc.1 可用，npm peer 说 0.4.3 要 >=rc.2。该仓库没有 CHANGELOG / Releases / tags，无法从版本历史判定。**取保守解：rc.1 上用 0.4.1。**"
+      },
+      "dsh-better-sidebar": {
+        "github": "https://github.com/omdsh-dev/DSH-better-sidebar",
+        "latest": "0.21.1",
+        "doc": "🔄 **2026-09-27 复核**：最新版 **0.21.1**（2026-09-23 发布）的 peer 已变为 `^0.1.7-rc.1`（9 个 dsh 包同值），`dsh.plugin.json` 亦写 `engines.dsh = \">=0.1.7-rc.1\"`，README 注『v0.21.1 起要求 DSH 0.1.7-rc.1+』⇒ **它不支持 0.1.5 线**，rc.3 上必须留在 **0.19.1**（`^0.1.5-rc.1`）。旧记录（0.19.1 时代）：README `v0.19.0 起适配 DSH 0.1.5-rc.1+`；v0.19.1 已在 0.1.5-rc.2 上完成真机挂载验证，peer 下限仍是 `^0.1.5-rc.1`。",
+        "startsFrom": "v0.19.0（alpha 通道 v0.19.0-alpha.1，基线 0.1.5-alpha.2）",
+        "docMatchesNpm": true
+      },
+      "dshmarket": {
+        "github": "https://github.com/dsh-market/dsh-market",
+        "latest": "1.66.2",
+        "doc": "🔄 **2026-09-27 复核**：最新 **1.66.2**（2026-09-26 发布；近两周发了 31 版，极密集）。但 peer 自 `1.39.0` 起至今**一直是** `^0.1.0-rc.7 || ^0.1.1-rc.2 || ^0.1.2-alpha.2` ⇒ **1.0.0~1.66.2 全版本都不含 0.1.5/0.1.6/0.1.7 预发布线**，且 release notes/README 从未声明适配它们（README 只在『0.1.7 起无设置开关』处提及该版本）。**全仓文档从未出现 0.1.5 字样**。",
+        "docMatchesNpm": "方向一致（都不含 0.1.5 线）",
+        "conflict": "peer 从 1.47.0 到 1.58.0 全部是 `^0.1.0-rc.7 || ^0.1.1-rc.2 || ^0.1.2-alpha.2`，**没有任何版本声明支持 0.1.5 线**。⚠️ 因此『它在 0.1.5-rc.1 上可用』**没有上游依据**，只有本机实测。README 亦说明：更旧的宿主上它会**自我禁用**并在浏览器 console 说明 —— 遇到『插件市场入口不出现』先怀疑这条。",
+        "status": "声明不匹配 + 实测可用（本机既有实例在跑）。**属最高风险项，升级/迁移后必须冒烟复验。**"
+      }
+    }
+  }
+}

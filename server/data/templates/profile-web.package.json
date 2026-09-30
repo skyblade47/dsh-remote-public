@@ -1,0 +1,42 @@
+{
+  "name": "dsh-profile-web",
+  "private": true,
+  "dependencies": {
+    "@huanlin/dsh-plugin-better-locale": "^0.4.1",
+    "@local/dsh-adapter": "file:./node_modules/@local/dsh-adapter",
+    "@local/knowledge-base": "file:./node_modules/@local/knowledge-base",
+    "@local/memory-system": "file:./node_modules/@local/memory-system",
+    "@local/miyoushe": "file:./node_modules/@local/miyoushe",
+    "@local/prompt-router": "file:./node_modules/@local/prompt-router",
+    "@local/skill-center": "file:./node_modules/@local/skill-center",
+    "@local/taskkit": "file:./node_modules/@local/taskkit",
+    "@local/version-radar": "file:./node_modules/@local/version-radar",
+    "@local/writing-coach": "file:./node_modules/@local/writing-coach",
+    "@local/writing-studio": "file:./node_modules/@local/writing-studio",
+    "@local/wrpro": "file:./node_modules/@local/wrpro",
+    "@nanmicoder/dsh-agent-teams": "^0.1.19",
+    "dsh-better-sidebar": "^0.19.1",
+    "dshmarket": "^1.47.0"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@local/dsh-adapter",
+        "dsh-better-sidebar",
+        "dshmarket",
+        "@local/taskkit",
+        "@local/wrpro",
+        "@local/writing-studio",
+        "@local/prompt-router",
+        "@local/knowledge-base",
+        "@local/skill-center",
+        "@local/memory-system",
+        "@local/writing-coach",
+        "@local/miyoushe",
+        "@huanlin/dsh-plugin-better-locale"
+      ]
+    }
+  }
+}

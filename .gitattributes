@@ -1,0 +1,13 @@
+# 这些文件要在 Linux 上执行，必须是 LF：
+# Windows 侧若开 core.autocrlf=true，检出时会把工作区文件转成 CRLF，
+# 而 CRLF 的 shebang 在 Linux / WSL 上会直接报 `\r': command not found`。
+# 显式钉住，免得依赖每个人的 git 配置。
+*.sh      text eol=lf
+*.service text eol=lf
+
+# *.js / *.mjs 同样必须是 LF：
+# 为什么补这两条（2026-09-26）：工作区里 6 个文件（plugins/dsh-adapter/**、migrate-session-owners.mjs）
+# 是 CRLF 而 HEAD 是 LF ⇒ `git diff --stat` 报 3107 增/3107 删，但 `git diff -w` 为空（内容一字未变）。
+# 只要有人跑一次 `git add -A`，就会提交 3107 行纯换行噪音。规则写死后 git 按规范化的 LF 比对 ⇒ 不再误报。
+*.js      text eol=lf
+*.mjs     text eol=lf

@@ -1,0 +1,27 @@
+[Unit]
+Description=DSH web kernel (dsh-remote backend, loopback only)
+Documentation=https://github.com/skyblade47/dsh-remote
+After=network-online.target
+Wants=network-online.target
+# 崩溃重启风暴保护（5 分钟内最多 10 次，避免配置错误时无限重启）
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+Group=__SERVICE_USER__
+Environment=PATH=__NPM_GLOBAL_BIN__:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin
+EnvironmentFile=-/etc/dsh-remote.env
+# 内核只监听回环：它自身零入站鉴权，对外必须一律经网关，绝不能直连暴露。
+# --no-open：无头服务器上不要尝试拉起浏览器（实测会打印 "opening the default browser"）。
+ExecStart=/usr/bin/env dsh web --port 3080 --no-open
+WorkingDirectory=__DSH_HOME__
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

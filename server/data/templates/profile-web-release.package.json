@@ -1,0 +1,20 @@
+{
+  "name": "dsh-profile-web",
+  "private": true,
+  "dependencies": {
+    "@huanlin/dsh-plugin-better-locale": "0.4.3",
+    "@nanmicoder/dsh-agent-teams": "0.1.21",
+    "dsh-better-sidebar": "0.19.1",
+    "dshmarket": "1.47.0",
+    "@local/dsh-adapter": "link:../plugins/dsh-adapter"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@local/dsh-adapter"
+      ]
+    }
+  }
+}

@@ -1,0 +1,115 @@
+# adapter 热插拔白名单种子（由 deploy/linux/setup.sh 落到 <DSH_HOME>/hotplug-manifest.yml，
+# 且**仅在目标文件不存在时**写入，避免覆盖运行期增删）。
+#
+# 为什么不进 dsh.profile.bundles：bundles 的条目挂在复合层里，dispose 链与 bundles 共享
+# ⇒ 热替档位最低、且加载失败会连累整核。走白名单则失败可控、状态可观测、档位更高。
+# 依据：docs/superpowers/specs/2026-09-22-adapter-hot-plug-design.md §1.3 / §1.4
+#
+# ⚠️ path 契约（2026-09-23 真机实证，别改回绝对路径）：
+#   **必须写"能从 profile 解析到的包名"**，由 adapter 的 plugin-path.fsPathOf 解析。
+#   之所以不能用绝对路径：resolveEntryName 对非 file: 输入原样返回，绝对目录会被 loader
+#   直接 import，而 **ESM 不支持目录导入** —— 实测报
+#   `LOAD_FAILED: Directory import '/opt/dsh-remote/plugins/writing-coach' is not supported`。
+#   现在绝对路径已被改为**明确报错**（plugin-path-contract.test.mjs 钉住）。
+#   包名能解析的前提：该包已被链接进 <profile>/node_modules（自研插件由 setup.sh 的
+#   链接步骤建 symlink，见 Task 4 Step 0）。
+#
+# 真机已验证的形态：path="@local/writing-coach" ⇒ loaded=true、tier=free、
+#   tierReason="loader 顶层独立条目"、UI graph 里出现 {"id":"@local/writing-coach", ...}
+version: 1
+entries:
+  # ── 自研（11，全部用包名）────────────────────────────────
+  # 注：`@local/lanr`（自研「局域网访问」）已于 2026-09-25 下线并移出白名单
+  #     （运行期 `POST {op:"remove",id:"lanr"}`）；其源码已于同轮从 `plugins/lanr/` 退役删除。
+  # 注：`@local/email-bridge`（自研「邮件桥」）已于 2026-09-25 下线并移出白名单
+  #     （运行期 `POST {op:"remove",id:"email-bridge"}`）；⚠️ **与 lanr 不同：源码保留在
+  #     `plugins/email-bridge/`（不删目录），只是不再加载/不运行**。下线原因见
+  #     docs/superpowers/plans/2026-09-25-local-change-ledger.md 的 `C-3`
+  #     （原为"无服务器时发布任务的替代手段"，已有服务器版通道 ⇒ 不再需要；
+  #      且其 `scheduleDailyReminder`（+3 s / 每 60 min）是启动尖峰的实测确定来源）。
+  - id: "knowledge-base"
+    path: "@local/knowledge-base"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "memory-system"
+    path: "@local/memory-system"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "miyoushe"
+    path: "@local/miyoushe"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "prompt-router"
+    path: "@local/prompt-router"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "skill-center"
+    path: "@local/skill-center"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "taskkit"
+    path: "@local/taskkit"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "writing-coach"
+    path: "@local/writing-coach"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "writing-studio"
+    path: "@local/writing-studio"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "wrpro"
+    path: "@local/wrpro"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "session-janitor"
+    path: "@local/session-janitor"
+    builtin: false
+    enabled: true
+    config: {}
+  # 注：`version-radar`（自研「版本雷达」）于 2026-09-26 新增并进白名单（白名单 14 → 15 条）。
+  #     它**只读**汇总版本事实、**只建议不执行**；`config` 保持 `{}` ⇒ HTTP `/check` 未配 secret ⇒ 403（fail-closed）。
+  #     ⚠️ release 侧 `<release>/plugins/` 与 `state.json.pluginSet` **刻意仍是 12 条**，见
+  #     docs/plugins/version-radar.md §5.1 与台账 C-7（留待首次真升级时随新 release 一起走）。
+  - id: "version-radar"
+    path: "@local/version-radar"
+    builtin: false
+    enabled: true
+    config: {}
+
+  # ── 第三方（4）：path 用**裸包名** ────────────────────────
+  # 2026-09-23 真机实测：4 个包都落在 <profile>/node_modules 下，
+  # 因此可以像自研那样直接用裸包名（不需要另定解析基准）：
+  #   profiles/web/node_modules/{@huanlin,@nanmicoder,dsh-better-sidebar,dshmarket}
+  # agent-teams 历史上曾导致宿主启动失败 —— 而它现在走的正是热插拔（失败可控、状态可观测），
+  # 这是 compat-matrix mountPolicy 对它的一贯要求。
+  - id: "better-sidebar"
+    path: "dsh-better-sidebar"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "dshmarket"
+    path: "dshmarket"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "agent-teams"
+    path: "@nanmicoder/dsh-agent-teams"
+    builtin: false
+    enabled: true
+    config: {}
+  - id: "better-locale"
+    path: "@huanlin/dsh-plugin-better-locale"
+    builtin: false
+    enabled: true
+    config: {}

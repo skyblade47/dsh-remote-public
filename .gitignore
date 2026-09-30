@@ -1,0 +1,85 @@
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 运行时数据（会话、账号、日志、工作区）——绝不入库
+dsh-data/
+dsh-data-*/
+.runtime/
+profiles/*/node_modules/
+*.log
+logs/
+
+# UI 入口重排（2026-09-24）留下的临时工作区：≈200 个一次性脚本 + 若干"某时刻的源码副本"。
+# 绝不入库 —— 副本快照入库会与真实源码混淆、并被误当权威版本。
+.scratch-ui-pilot/
+
+# 真实凭据（仅 *.template 脱敏模板入库）
+.credentials.yaml
+**/.credentials.yaml
+
+# 构建产物
+dist/
+out/
+release/
+asar-out/
+*.asar
+*.zip
+
+# 终端客户端（已拆分为独立仓库 skyblade47/dsh-remote-client）
+# 用 tools/fetch-client.ps1 克隆到此目录；本仓库不再保存其源码副本，避免两边版本漂移。
+# 注意加前导斜杠：否则会连带忽略 plugins/*/client/ 这类同名子目录。
+/client/
+# fetch-client.ps1 对旧的普通目录改名留档时产生的备份
+/client.legacy-*/
+
+# 写作客户端（Electron）—— 已拆分为独立仓库。
+# 同 /client/ 的理由：独立仓 + 完全不同的技术栈；本仓库不保存其源码副本，避免两边版本漂移。
+/writing-client/
+# 安卓客户端（独立仓 skyblade47/dsh-remote-android）—— 同 /writing-client/ 的理由。
+# 注意加前导斜杠：否则会连带忽略将来任何叫 dsh-remote-android 的子目录。
+/dsh-remote-android/
+
+# 本地配置与凭证
+.env
+.env.*
+*.local
+desktop-config.json
+*-config.local.json
+*.pem
+*.key
+*.p12
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.trae/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+_tmp_*
+*.tmp
+*.bak
+*.bak-*
+
+# 本地探针生成的凭证产物
+server/scripts/_cookie.txt
+
+# 服务器诊断/探针工作区（2026-09-25 的 T-1/T-3/T-4 等只读诊断轮次各留一个）：
+# 每个目录都是「一次性现场脚本 + 该时刻的观测输出」的快照，绝不入库 ——
+# 输出里大量是「某时刻的运行期事实」，入库会被后人误当权威结论、也会与真实源码混淆。
+# 目录名不带公共前缀（t1diag/t3diag/wakefix/… 各自命名），故逐条列出：
+# 通配（如 .*diag*/）会连带忽略将来同形的真实目录，逐条最精确。
+.diag-readonly/
+.t1diag/
+.t3diag/
+.wakefix/
+.retire-eb/
+.probe-client/
+.verify-open/
+.netdiag/
+.t5diag/
+# 2026-09-26 凌晨 §G「旧 compaction summary 喂坏写法」分析轮：只读采样脚本 + 内存采样输出。
+.capdiag/

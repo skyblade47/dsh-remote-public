@@ -1,0 +1,35 @@
+{
+  "name": "@local/dsh-adapter",
+  "description": "插件适配器层（防腐层/单点减震器）+ 静态插件热拔插中间层：收敛各业务插件重复的宿主胶水代码（ctx 服务 adapterFs / adapterHttp），并承载 hotplug 热拔插（ModuleGraphBuster 按代次破除整条 ESM 子图缓存、原子 reload 与失败自愈回滚、白名单与审计）。宿主升级改 API 时业务插件零改动，只改本包。设置界面：设置 → 插件热拔插。",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "license": "MIT",
+  "engines": {
+    "dsh": "0.1.5-rc.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./dsh-bundle-patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-runtime"
+      ],
+      "platform": "web"
+    }
+  },
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": "./client/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "client",
+    "dsh-bundle-patch.yml"
+  ]
+}

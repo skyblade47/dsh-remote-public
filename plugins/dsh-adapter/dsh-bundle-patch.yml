@@ -1,0 +1,57 @@
+# dsh bundle patch: inserts this plugin into a profile's layer stack.
+#
+# 根表路径支持 ${VAR} / ${VAR:-默认值} 占位（由 lib/index.js 的 expandVars 展开），
+# 因此 Windows 与 Linux 共用这一份配置，不各自维护一份导致漂移：
+#   - Windows（默认值）：不设 DSH_WORKSPACE_ROOT 即指向 E:/DSH工作区，与历史行为一致；
+#   - Linux：由 deploy/linux/setup.sh 注入 DSH_WORKSPACE_ROOT=<工作区根>。
+# 若在 POSIX 上忘设该变量，adapter 会在 apply 日志里写 CONFIG_WARN（不会静默写错目录）。
+- insert:
+    - id: local-dsh-adapter
+      name: '@local/dsh-adapter'
+      config:
+        adapter:
+          roots:
+            写作训练: '${DSH_WORKSPACE_ROOT:-E:/DSH工作区}/写作训练'
+            全局数据: '${DSH_WORKSPACE_ROOT:-E:/DSH工作区}/全局数据'
+            记忆归档: '${DSH_WORKSPACE_ROOT:-E:/DSH工作区}/记忆归档'
+            邮件附件: '${DSH_WORKSPACE_ROOT:-E:/DSH工作区}/写作训练/邮件附件'
+            # 2026-09-19（t111 / G11①）：新增两登记根，消除 kb_sync_docs 末两处硬编码绝对路径
+            #   DSH工具       ← 技术文档库.json（kb_sync_docs 组5）
+            #   插件开发体系模板 ← 领域模板目录（kb_sync_docs 组6）
+            DSH工具: '${DSH_WORKSPACE_ROOT:-E:/DSH工作区}/DSH工具'
+            插件开发体系模板: '${DSH_WORKSPACE_ROOT:-E:/DSH工作区}/插件开发体系模板'
+          defaultDataRoot: '全局数据'
+          timeoutMs: 8000
+          # ── 重启自恢复（P3）──────────────────────────────────────────────────────
+          # 归属：唤醒与扫描的**唯一实现在本插件**（lib/resume/），不再单独安装 resume-on-boot
+          #   —— 这同时避开了"往 dsh.profile.bundles 里加包会让整个内核起不来"的高危区。
+          #
+          # 取值依据（2026-09-22 真机验收 T1–T9 + 缺陷 U7–U12 全过；证据链见
+          #   docs/superpowers/plans/2026-09-22-dsh-remote-p3-resume-on-boot.md）：
+          #   · P1「父对话已闭合、子代理被掐断」在真实数据（554 会话）里命中 **8 例**，父会话全为 closed
+          #     ⇒ 这是目前**唯一有实证**的"有活没干完"信号 ⇒ 生产默认只跑 P1。
+          #   · P0「会话自身 turn 未闭合」命中 **236/419（56%）**，多数只是"半句话被打断"，
+          #     唤醒它们噪声大于收益 ⇒ 默认**不**唤醒（要开需显式改 scope: all）。
+          #   · P2（active goal）/ P3（外部插件注册信号）**本轮未实现**，只留了扩展点。
+          resume:
+            # ⛔ 2026-09-25 生产置 false（T0-1，防内存）：resume 轮是本机 1740 MB 上最重的命中
+            #   （实测单轮 RESUME ROUND enabled=true durationMs=81237 ≈ 崩溃节奏 91–122 s）⇒ 见
+            #   docs/superpowers/plans/2026-09-25-plugin-memory-control-design.md §2.4 / §4.1。
+            #   ⚠️ 此前只改在**服务器部署副本**上（未入版本控制）⇒ 下一次 rsync 即回退
+            #   （升级 Runbook §4-B / §5.3 步骤 6a）；现纳入版本控制以"防复现"。**不经评估不要改回 true。**
+            enabled: false
+            # tasks-only = 只唤醒 P1。想连 P0 一起唤醒（噪声较大）改成 all。
+            scope: tasks-only
+            # 给内核其余部分留出就绪时间；apply 期不做扫描，到点后在后台异步跑。
+            startDelayMs: 8000
+            dryRun: false
+            # 其余项用代码默认值，不要在这里重复声明（避免与代码默认漂移）：
+            #   maxResumePerBoot: 5（防重启风暴）
+            #   recentWindowMs: 6h —— 闸门语义是"被重启掐断的会话，日志刚刚还在写"。
+            #     ⚠️ 真机 dryRun 时我用 12h 才观察到候选，那是因为那份数据最后活动在 8h 前，
+            #     并**不是**生产常态；窗口放宽会把陈旧会话也算成候选，要放宽请配合审计里的
+            #     lastActiveSource / lastActiveAt 判断。
+            #
+            # ⛔ 生产**绝不要**设置 testForceMissingPresetId：那是真机验收 T9 用的故障注入开关，
+            #    启用后每次唤醒都会拿一个不存在的 preset id ⇒ **必然失败**。它一旦出现在
+            #    生产配置里，审计会持续报 resume.test_override（WARN）。

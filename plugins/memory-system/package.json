@@ -1,0 +1,37 @@
+{
+  "name": "@local/memory-system",
+  "description": "记忆管理系统插件：分层记忆（L0项目事实/L1任务摘要/L2原始记录 + IDX索引 + working工作记忆）+ 基于任务的上下文加载策略（memory_load 白名单式+硬预算上下文包，对接知识库kb/技能skill/提示词prompt）",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "license": "MIT",
+  "engines": {
+    "dsh": "0.1.5-rc.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-primitives"
+      ],
+      "platform": "web"
+    }
+  },
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": "./client/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "client",
+    "cordis.patch.yml"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@local/email-bridge",
+  "description": "邮件桥静态化：接收邮件任务、类型映射转派、重启补扫补派",
+  "version": "0.2.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "license": "MIT",
+  "engines": {
+    "dsh": "0.1.5-rc.3"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "inject": ["@deepseek-ai/dsh-client-connection", "@deepseek-ai/dsh-client-runtime"], "platform": "web" }
+  },
+  "exports": {
+    ".": { "default": "./lib/index.js" },
+    "./client": "./client/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib", "client", "cordis.patch.yml"],
+  "dependencies": {
+    "nodemailer": "^6.9.0"
+  }
+}

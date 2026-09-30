@@ -1,0 +1,12 @@
+{
+  "name": "@dsh-remote/gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "独立前置网关：反代客户端请求到 dsh 内核实例",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  }
+}

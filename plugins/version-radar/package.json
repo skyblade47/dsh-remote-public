@@ -1,0 +1,27 @@
+{
+  "name": "@local/version-radar",
+  "description": "版本雷达（Version Radar）：只读汇总「当前内核版本 / 上游 npm dist-tags / 第三方插件 peerDependencies 的 semver 求交 / 本地改动台账待办 / 回滚目标是否在盘」⇒ 输出一份「升级建议 + 待办清单」。只建议、不执行。",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "license": "MIT",
+  "engines": {
+    "dsh": "0.1.5-rc.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml"
+  ]
+}

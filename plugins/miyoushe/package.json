@@ -1,0 +1,29 @@
+{
+  "name": "@local/miyoushe",
+  "description": "米游社定时打卡插件（静态化）：DS 签名 + 版本↔盐表 + 调度器 + 脱敏数据面 + 12 actions / 14 工具。无 client 设置卡（本包不声明 dsh.client）。",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "license": "MIT",
+  "engines": {
+    "dsh": "0.1.5-rc.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./dsh-bundle-patch.yml": "./dsh-bundle-patch.yml"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "dsh-bundle-patch.yml"
+  ]
+}

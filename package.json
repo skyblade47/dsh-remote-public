@@ -1,0 +1,15 @@
+{
+  "name": "dsh-remote",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.5.1",
+  "type": "module",
+  "description": "把 DeepSeek Harness 改造成服务端常驻 + 多终端客户端接入",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "test": "node --test server/gateway/tests/*.test.js",
+    "test:all": "node --test server/gateway/tests/*.test.js"
+  }
+}

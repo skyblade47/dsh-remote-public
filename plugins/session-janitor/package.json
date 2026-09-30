@@ -1,0 +1,27 @@
+{
+  "name": "@local/session-janitor",
+  "description": "会话治理（Session Janitor）：只读 survey（RFC8878 结构性帧解析 + 计数 + 分组 + 双口径预估）、状态查询，以及 apply/restore 骨架（破坏性动作默认关闭、需显式确认）。执行位置原则：重活本地做、远端只做受控窗口内的原子替换。",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "license": "MIT",
+  "engines": {
+    "dsh": "0.1.5-rc.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml"
+  ]
+}
